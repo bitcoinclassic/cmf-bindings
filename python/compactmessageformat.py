@@ -24,24 +24,24 @@ class CMF_ValueType:
 
 def serialize(data, offset, value):
     pos = 0
-    while (1):
+    while True:
         mask = 0
-        if (pos != 0):
+        if pos != 0:
             mask = 0x80
 
         data[pos + offset] = (value & 0x7F) | mask
-        if (value <= 0x7F):
+        if value <= 0x7F:
             break
         value = (value >> 7) - 1
-        pos = pos + 1
+        pos += 1
 
     # reverse
     i = int(pos / 2)
-    while (i >= 0):
+    while i >= 0:
         byte = data[pos + offset - i]
         data[pos + offset - i] = data[i + offset]
         data[i + offset] = byte
-        i = i - 1
+        i -= 1
 
     return pos + 1
 
@@ -50,11 +50,11 @@ def unserialize(data, dataSize, position):
     assert(position >= 0)
     result = 0
     pos = position
-    while (pos - position < 8):
+    while (pos - position) < 8:
         byte = data[pos]
         pos += 1
         result = (result << 7) | (byte & 0x7F)
-        if ((byte & 0x80) != 0):
+        if (byte & 0x80) != 0:
             result += 1
         else:
             position = pos
@@ -83,8 +83,8 @@ def arraycopy(source, sourcePos, dest, destPos):
   them out again unchanged.
 """
 class MessageBuilder:
-    def __init__(self, data, position):
-        self.buffer = data
+    def __init__(self, buffer, position):
+        self.buffer = buffer
         self.position = position
 
     def add_int(self, tag, value):
@@ -120,7 +120,7 @@ class MessageBuilder:
         return self.position
 
     def __write(self, tag, type):
-        if (tag >= 31): # use more than 1 byte
+        if tag >= 31: # use more than 1 byte
             byte = type | 0xF8 # set the 'tag' to all 1s
             self.buffer[self.position] = byte
             self.position += serialize(self.buffer, self.position + 1, tag) + 1
@@ -153,22 +153,22 @@ class MessageParser(object):
         String = 1
 
     def next(self):
-        if (self.endPosition <= self.position):
+        if self.endPosition <= self.position:
             return MessageParser.Type.EndOfDocument
 
         byte = self.data[self.position]
         data_type = (byte & 0x07)
 
         self.tag = byte >> 3
-        if (self.tag == 31):  # the tag is stored in the next byte(s)
+        if self.tag == 31:  # the tag is stored in the next byte(s)
             newTag = 0
             self.position += 1
             self.position, newTag = unserialize(self.data, self.endPosition, self.position)
             ok = True
-            if (ok and newTag > 0xFFFF):
+            if ok and newTag > 0xFFFF:
                 ok = False
             self.position -= 1
-            if (not ok):
+            if not ok:
                 return MessageParser.Type.Error
             self.tag = newTag
 
@@ -182,7 +182,7 @@ class MessageParser(object):
         elif data_type in [CMF_ValueType.String, CMF_ValueType.ByteArray]:
             newPos = self.position + 1
             newPos, value = unserialize(self.data, self.endPosition, newPos)
-            if (newPos + value > len(self.data)): # need more bytes
+            if newPos + value > len(self.data): # need more bytes
                 return MessageParser.Type.Error
 
             if data_type == CMF_ValueType.ByteArray:
