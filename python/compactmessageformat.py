@@ -88,33 +88,33 @@ class MessageBuilder:
         self.position = position
 
     def add_int(self, tag, value):
-        if (value >= 0):
-            vt = 0 # PositiveNumber
+        if value >= 0:
+            vt = CMF_ValueType.PositiveNumber
         else:
-            vt = 1 # NegativeNumber
+            vt = CMF_ValueType.NegativeNumber
             value *= -1
         self.__write(tag, vt)
         self.position += serialize(self.buffer, self.position, value)
 
     # This method assumes that 'value' is already an utf8 encoded string.
     def add_string(self, tag, value):
-        self.__write(tag, 2) # String
+        self.__write(tag, CMF_ValueType.String)
         bytesData = codecs.encode(value, 'utf-8');
         self.position += serialize(self.buffer, self.position, len(bytesData))
         arraycopy(bytesData, 0, self.buffer, self.position)
         self.position += len(bytesData)
 
     def add_bytes(self, tag, value):
-        self.__write(tag, 3) # bytearray
+        self.__write(tag, CMF_ValueType.ByteArray)
         self.position += serialize(self.buffer, self.position, len(value))
         arraycopy(value, 0, self.buffer, self.position)
         self.position += len(value)
 
     def add_bool(self, tag, value):
-        type = 5 # Bool_False
-        if (value == True):
-            type = 4 # Bool_True
-        self.__write(tag, type)
+        if value:
+            self.__write(tag, CMF_ValueType.BoolTrue)
+        else:
+            self.__write(tag, CMF_ValueType.BoolFalse)
 
     def get_position(self):
         return self.position
@@ -173,25 +173,31 @@ class MessageParser(object):
             self.tag = newTag
 
         value = 0
-        if (data_type == 0 or data_type == 1): # Numbers
+        if data_type in [CMF_ValueType.PositiveNumber, CMF_ValueType.NegativeNumber]:
             self.position, value = unserialize(self.data, self.endPosition, self.position + 1)
-            if (data_type == 1): # CMF_ValueType.NegativeNumber
+            if data_type == CMF_ValueType.NegativeNumber:
                 value *= -1
             self.value = value
-        elif (data_type == 2 or data_type == 3): # String or ByteArray
+
+        elif data_type in [CMF_ValueType.String, CMF_ValueType.ByteArray]:
             newPos = self.position + 1
             newPos, value = unserialize(self.data, self.endPosition, newPos)
             if (newPos + value > len(self.data)): # need more bytes
                 return MessageParser.Type.Error
 
-            self.valueState = MessageParser.Lazy.ByteArray if (data_type == 3) else MessageParser.Lazy.String
+            if data_type == CMF_ValueType.ByteArray:
+                self.valueState = MessageParser.Lazy.ByteArray
+            else:
+                self.valueState = MessageParser.Lazy.String
+
             self.dataStart = newPos
             self.dataLength = value
             self.position = newPos + value
-        elif (data_type == 4):
+
+        elif data_type == CMF_ValueType.BoolTrue:
             value = True
             self.position += 1
-        elif (data_type == 5):
+        elif data_type == CMF_ValueType.BoolFalse:
             value = False
             self.position += 1
         else:
@@ -201,7 +207,7 @@ class MessageParser(object):
         return MessageParser.Type.FoundTag
 
     def string_value(self):
-        if (self.valueState == MessageParser.Lazy.ByteArray or self.valueState == MessageParser.Lazy.String):
+        if self.valueState in [MessageParser.Lazy.ByteArray, MessageParser.Lazy.String]:
             return self.data[self.dataStart:self.dataStart + self.dataLength]
         return self.value
 
