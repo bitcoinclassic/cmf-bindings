@@ -55,7 +55,7 @@ class TestCMF(unittest.TestCase):
     def test_types(self):
         buffer = bytearray(b"000000000000000000000000000000000")
         builder = MessageBuilder(buffer, 0)
-        builder.add_string(1, "Föo");
+        builder.add_string(1, u"Föo");
         builder.add_bytes(200, b"hihi");
         builder.add_bool(3, True);
         builder.add_bool(40, False);
@@ -89,7 +89,7 @@ class TestCMF(unittest.TestCase):
         parser = MessageParser(buffer, 0, builder.get_position());
         self.assertEquals(MessageParser.Type.FoundTag, parser.next());
         self.assertEquals(1, parser.tag);
-        self.assertEquals(bytes("Föo"), parser.string_value())
+        self.assertEquals(u"Föo".encode('utf-8'), parser.string_value())
         self.assertEquals(MessageParser.Type.FoundTag, parser.next());
         self.assertEquals(200, parser.tag);
         self.assertEquals(b"hihi", parser.string_value())

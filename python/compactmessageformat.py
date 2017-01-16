@@ -98,9 +98,10 @@ class MessageBuilder:
     # This method assumes that 'value' is already an utf8 encoded string.
     def add_string(self, tag, value):
         self.__write(tag, 2) # String
-        self.position += serialize(self.buffer, self.position, len(value))
-        arraycopy(value, 0, self.buffer, self.position, len(value))
-        self.position += len(value)
+        bytesData = codecs.encode(value, 'utf-8');
+        self.position += serialize(self.buffer, self.position, len(bytesData))
+        arraycopy(bytesData, 0, self.buffer, self.position, len(bytesData))
+        self.position += len(bytesData)
 
     def add_bytes(self, tag, value):
         self.__write(tag, 3) # bytearray
