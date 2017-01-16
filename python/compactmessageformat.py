@@ -61,8 +61,9 @@ def unserialize(data, dataSize, position):
             return position, result
     raise Exception("Reading VarInt past stream-size")
 
-def arraycopy(source, sourcePos, dest, destPos, numElem):
-    while (numElem > 0):
+def arraycopy(source, sourcePos, dest, destPos):
+    numElem = len(source)
+    while numElem > 0:
         dest[destPos] = source[sourcePos]
         numElem -= 1
         destPos += 1
@@ -100,13 +101,13 @@ class MessageBuilder:
         self.__write(tag, 2) # String
         bytesData = codecs.encode(value, 'utf-8');
         self.position += serialize(self.buffer, self.position, len(bytesData))
-        arraycopy(bytesData, 0, self.buffer, self.position, len(bytesData))
+        arraycopy(bytesData, 0, self.buffer, self.position)
         self.position += len(bytesData)
 
     def add_bytes(self, tag, value):
         self.__write(tag, 3) # bytearray
         self.position += serialize(self.buffer, self.position, len(value))
-        arraycopy(value, 0, self.buffer, self.position, len(value))
+        arraycopy(value, 0, self.buffer, self.position)
         self.position += len(value)
 
     def add_bool(self, tag, value):
