@@ -15,11 +15,11 @@
 import codecs
 
 class CMF_ValueType:
-    PositiveNumber = 0, # var-int-encoded (between 1 and 9 bytes in length). Per definition a positive number.
-    NegativeNumber = 1, # var-int-encoded (between 1 and 9 bytes in length). Per definition a negative number.
-    String = 2,         # first an UnsignedNumber for the length, then the actual bytes. Never a closing zero. Utf8 encoded.
-    ByteArray = 3,      # identical to String, but without encoding.
-    BoolTrue = 4,       # not followed with any bytes
+    PositiveNumber = 0 # var-int-encoded (between 1 and 9 bytes in length). Per definition a positive number.
+    NegativeNumber = 1 # var-int-encoded (between 1 and 9 bytes in length). Per definition a negative number.
+    String = 2         # first an UnsignedNumber for the length, then the actual bytes. Never a closing zero. Utf8 encoded.
+    ByteArray = 3      # identical to String, but without encoding.
+    BoolTrue = 4       # not followed with any bytes
     BoolFalse = 5       # not followed with any bytes
 
 def serialize(data, offset, value):
