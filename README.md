@@ -59,6 +59,8 @@ the actual value.
 At this time there are implementations for;
 
 * C++ which depend on Qt
+* C++ with boost
 * C# Should work with any version, the project assumes 4.5
 * Java
 * Python
+* C
