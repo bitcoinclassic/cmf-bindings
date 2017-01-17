@@ -14,21 +14,13 @@
 
 import codecs
 
-
 class CMF_ValueType:
-    # var-int-encoded (between 1 and 9 bytes in length).
-    # Per definition a positive number.
-    PositiveNumber = 0,
-    # var-int-encoded (between 1 and 9 bytes in length).
-    # Per definition a negative number.
-    NegativeNumber = 1,
-    # first an UnsignedNumber for the length, then the actual bytes.
-    # Never a closing zero. Utf8 encoded.
-    String = 2,
+    PositiveNumber = 0, # var-int-encoded (between 1 and 9 bytes in length). Per definition a positive number.
+    NegativeNumber = 1, # var-int-encoded (between 1 and 9 bytes in length). Per definition a negative number.
+    String = 2,         # first an UnsignedNumber for the length, then the actual bytes. Never a closing zero. Utf8 encoded.
     ByteArray = 3,      # identical to String, but without encoding.
     BoolTrue = 4,       # not followed with any bytes
     BoolFalse = 5       # not followed with any bytes
-
 
 def serialize(data, offset, value):
     pos = 0
@@ -69,7 +61,6 @@ def unserialize(data, dataSize, position):
             return position, result
     raise Exception("Reading VarInt past stream-size")
 
-
 def arraycopy(source, sourcePos, dest, destPos, numElem):
     while (numElem > 0):
         dest[destPos] = source[sourcePos]
@@ -84,55 +75,52 @@ def arraycopy(source, sourcePos, dest, destPos, numElem):
 
   The unique part is that the value is typed and for variable-length structures
   (like a string) a length is included.
-  The effect is that you can fully parse a structure without having any prior
-  knowledge of the fields, the expected content in the fields and the size.
-  You can compare this to an XML stream where some items are stored with tags
-  or attributes are unknown to the reader, without causing any effect on being
-  able to parse them or to write them out again unchanged.
+  The effect is that you can fully parse a structure without having any prior knowledge
+  of the fields, the expected content in the fields and the size.
+  You can compare this to an XML stream where some items are stored with tags or attributes
+  are unknown to the reader, without causing any effect on being able to parse them or to write
+  them out again unchanged.
 """
-
-
 class MessageBuilder:
-
     def __init__(self, data, position):
         self.buffer = data
         self.position = position
 
     def add_int(self, tag, value):
         if (value >= 0):
-            vt = 0  # PositiveNumber
+            vt = 0 # PositiveNumber
         else:
-            vt = 1  # NegativeNumber
+            vt = 1 # NegativeNumber
             value *= -1
         self.__write(tag, vt)
         self.position += serialize(self.buffer, self.position, value)
 
     # This method assumes that 'value' is already an utf8 encoded string.
     def add_string(self, tag, value):
-        self.__write(tag, 2)  # String
-        bytesData = codecs.encode(value, 'utf-8')
+        self.__write(tag, 2) # String
+        bytesData = codecs.encode(value, 'utf-8');
         self.position += serialize(self.buffer, self.position, len(bytesData))
         arraycopy(bytesData, 0, self.buffer, self.position, len(bytesData))
         self.position += len(bytesData)
 
     def add_bytes(self, tag, value):
-        self.__write(tag, 3)  # bytearray
+        self.__write(tag, 3) # bytearray
         self.position += serialize(self.buffer, self.position, len(value))
         arraycopy(value, 0, self.buffer, self.position, len(value))
         self.position += len(value)
 
     def add_bool(self, tag, value):
-        type = 5  # Bool_False
-        if value is True:
-            type = 4  # Bool_True
+        type = 5 # Bool_False
+        if (value == True):
+            type = 4 # Bool_True
         self.__write(tag, type)
 
     def get_position(self):
         return self.position
 
     def __write(self, tag, type):
-        if (tag >= 31):  # use more than 1 byte
-            byte = type | 0xF8  # set the 'tag' to all 1s
+        if (tag >= 31): # use more than 1 byte
+            byte = type | 0xF8 # set the 'tag' to all 1s
             self.buffer[self.position] = byte
             self.position += serialize(self.buffer, self.position + 1, tag) + 1
             return
@@ -143,9 +131,7 @@ class MessageBuilder:
         self.buffer[self.position] = byte
         self.position = self.position + 1
 
-
 class MessageParser(object):
-
     def __init__(self, data, position, length):
         self.data = data
         self.position = position
@@ -176,8 +162,7 @@ class MessageParser(object):
         if (self.tag == 31):  # the tag is stored in the next byte(s)
             newTag = 0
             self.position += 1
-            self.position, newTag = unserialize(
-                self.data, self.endPosition, self.position)
+            self.position, newTag = unserialize(self.data, self.endPosition, self.position)
             ok = True
             if (ok and newTag > 0xFFFF):
                 ok = False
@@ -187,20 +172,18 @@ class MessageParser(object):
             self.tag = newTag
 
         value = 0
-        if (data_type == 0 or data_type == 1):  # Numbers
-            self.position, value = unserialize(
-                self.data, self.endPosition, self.position + 1)
-            if (data_type == 1):  # CMF_ValueType.NegativeNumber
+        if (data_type == 0 or data_type == 1): # Numbers
+            self.position, value = unserialize(self.data, self.endPosition, self.position + 1)
+            if (data_type == 1): # CMF_ValueType.NegativeNumber
                 value *= -1
             self.value = value
-        elif (data_type == 2 or data_type == 3):  # String or ByteArray
+        elif (data_type == 2 or data_type == 3): # String or ByteArray
             newPos = self.position + 1
             newPos, value = unserialize(self.data, self.endPosition, newPos)
-            if (newPos + value > len(self.data)):  # need more bytes
+            if (newPos + value > len(self.data)): # need more bytes
                 return MessageParser.Type.Error
 
-            self.valueState = MessageParser.Lazy.ByteArray if (
-                data_type == 3) else MessageParser.Lazy.String
+            self.valueState = MessageParser.Lazy.ByteArray if (data_type == 3) else MessageParser.Lazy.String
             self.dataStart = newPos
             self.dataLength = value
             self.position = newPos + value
@@ -217,8 +200,7 @@ class MessageParser(object):
         return MessageParser.Type.FoundTag
 
     def string_value(self):
-        if (self.valueState == MessageParser.Lazy.ByteArray or
-                self.valueState == MessageParser.Lazy.String):
+        if (self.valueState == MessageParser.Lazy.ByteArray or self.valueState == MessageParser.Lazy.String):
             return self.data[self.dataStart:self.dataStart + self.dataLength]
         return self.value
 
@@ -228,3 +210,5 @@ class MessageParser(object):
     def consume(self, num_bytes):
         assert(num_bytes >= 0)
         self.position += num_bytes
+
+
