@@ -15,33 +15,33 @@
 import codecs
 
 class CMF_ValueType:
-    PositiveNumber = 0, # var-int-encoded (between 1 and 9 bytes in length). Per definition a positive number.
-    NegativeNumber = 1, # var-int-encoded (between 1 and 9 bytes in length). Per definition a negative number.
-    String = 2,         # first an UnsignedNumber for the length, then the actual bytes. Never a closing zero. Utf8 encoded.
-    ByteArray = 3,      # identical to String, but without encoding.
-    BoolTrue = 4,       # not followed with any bytes
+    PositiveNumber = 0 # var-int-encoded (between 1 and 9 bytes in length). Per definition a positive number.
+    NegativeNumber = 1 # var-int-encoded (between 1 and 9 bytes in length). Per definition a negative number.
+    String = 2         # first an UnsignedNumber for the length, then the actual bytes. Never a closing zero. Utf8 encoded.
+    ByteArray = 3      # identical to String, but without encoding.
+    BoolTrue = 4       # not followed with any bytes
     BoolFalse = 5       # not followed with any bytes
 
 def serialize(data, offset, value):
     pos = 0
-    while (1):
+    while True:
         mask = 0
-        if (pos != 0):
+        if pos != 0:
             mask = 0x80
 
         data[pos + offset] = (value & 0x7F) | mask
-        if (value <= 0x7F):
+        if value <= 0x7F:
             break
         value = (value >> 7) - 1
-        pos = pos + 1
+        pos += 1
 
     # reverse
     i = int(pos / 2)
-    while (i >= 0):
+    while i >= 0:
         byte = data[pos + offset - i]
         data[pos + offset - i] = data[i + offset]
         data[i + offset] = byte
-        i = i - 1
+        i -= 1
 
     return pos + 1
 
@@ -50,19 +50,20 @@ def unserialize(data, dataSize, position):
     assert(position >= 0)
     result = 0
     pos = position
-    while (pos - position < 8):
+    while (pos - position) < 8:
         byte = data[pos]
         pos += 1
         result = (result << 7) | (byte & 0x7F)
-        if ((byte & 0x80) != 0):
+        if (byte & 0x80) != 0:
             result += 1
         else:
             position = pos
             return position, result
     raise Exception("Reading VarInt past stream-size")
 
-def arraycopy(source, sourcePos, dest, destPos, numElem):
-    while (numElem > 0):
+def arraycopy(source, sourcePos, dest, destPos):
+    numElem = len(source)
+    while numElem > 0:
         dest[destPos] = source[sourcePos]
         numElem -= 1
         destPos += 1
@@ -82,44 +83,44 @@ def arraycopy(source, sourcePos, dest, destPos, numElem):
   them out again unchanged.
 """
 class MessageBuilder:
-    def __init__(self, data, position):
-        self.buffer = data
+    def __init__(self, buffer, position):
+        self.buffer = buffer
         self.position = position
 
     def add_int(self, tag, value):
-        if (value >= 0):
-            vt = 0 # PositiveNumber
+        if value >= 0:
+            vt = CMF_ValueType.PositiveNumber
         else:
-            vt = 1 # NegativeNumber
+            vt = CMF_ValueType.NegativeNumber
             value *= -1
         self.__write(tag, vt)
         self.position += serialize(self.buffer, self.position, value)
 
     # This method assumes that 'value' is already an utf8 encoded string.
     def add_string(self, tag, value):
-        self.__write(tag, 2) # String
+        self.__write(tag, CMF_ValueType.String)
         bytesData = codecs.encode(value, 'utf-8');
         self.position += serialize(self.buffer, self.position, len(bytesData))
-        arraycopy(bytesData, 0, self.buffer, self.position, len(bytesData))
+        arraycopy(bytesData, 0, self.buffer, self.position)
         self.position += len(bytesData)
 
     def add_bytes(self, tag, value):
-        self.__write(tag, 3) # bytearray
+        self.__write(tag, CMF_ValueType.ByteArray)
         self.position += serialize(self.buffer, self.position, len(value))
-        arraycopy(value, 0, self.buffer, self.position, len(value))
+        arraycopy(value, 0, self.buffer, self.position)
         self.position += len(value)
 
     def add_bool(self, tag, value):
-        type = 5 # Bool_False
-        if (value == True):
-            type = 4 # Bool_True
-        self.__write(tag, type)
+        if value:
+            self.__write(tag, CMF_ValueType.BoolTrue)
+        else:
+            self.__write(tag, CMF_ValueType.BoolFalse)
 
     def get_position(self):
         return self.position
 
     def __write(self, tag, type):
-        if (tag >= 31): # use more than 1 byte
+        if tag >= 31: # use more than 1 byte
             byte = type | 0xF8 # set the 'tag' to all 1s
             self.buffer[self.position] = byte
             self.position += serialize(self.buffer, self.position + 1, tag) + 1
@@ -152,45 +153,51 @@ class MessageParser(object):
         String = 1
 
     def next(self):
-        if (self.endPosition <= self.position):
+        if self.endPosition <= self.position:
             return MessageParser.Type.EndOfDocument
 
         byte = self.data[self.position]
         data_type = (byte & 0x07)
 
         self.tag = byte >> 3
-        if (self.tag == 31):  # the tag is stored in the next byte(s)
+        if self.tag == 31:  # the tag is stored in the next byte(s)
             newTag = 0
             self.position += 1
             self.position, newTag = unserialize(self.data, self.endPosition, self.position)
             ok = True
-            if (ok and newTag > 0xFFFF):
+            if ok and newTag > 0xFFFF:
                 ok = False
             self.position -= 1
-            if (not ok):
+            if not ok:
                 return MessageParser.Type.Error
             self.tag = newTag
 
         value = 0
-        if (data_type == 0 or data_type == 1): # Numbers
+        if data_type in [CMF_ValueType.PositiveNumber, CMF_ValueType.NegativeNumber]:
             self.position, value = unserialize(self.data, self.endPosition, self.position + 1)
-            if (data_type == 1): # CMF_ValueType.NegativeNumber
+            if data_type == CMF_ValueType.NegativeNumber:
                 value *= -1
             self.value = value
-        elif (data_type == 2 or data_type == 3): # String or ByteArray
+
+        elif data_type in [CMF_ValueType.String, CMF_ValueType.ByteArray]:
             newPos = self.position + 1
             newPos, value = unserialize(self.data, self.endPosition, newPos)
-            if (newPos + value > len(self.data)): # need more bytes
+            if newPos + value > len(self.data): # need more bytes
                 return MessageParser.Type.Error
 
-            self.valueState = MessageParser.Lazy.ByteArray if (data_type == 3) else MessageParser.Lazy.String
+            if data_type == CMF_ValueType.ByteArray:
+                self.valueState = MessageParser.Lazy.ByteArray
+            else:
+                self.valueState = MessageParser.Lazy.String
+
             self.dataStart = newPos
             self.dataLength = value
             self.position = newPos + value
-        elif (data_type == 4):
+
+        elif data_type == CMF_ValueType.BoolTrue:
             value = True
             self.position += 1
-        elif (data_type == 5):
+        elif data_type == CMF_ValueType.BoolFalse:
             value = False
             self.position += 1
         else:
@@ -200,7 +207,7 @@ class MessageParser(object):
         return MessageParser.Type.FoundTag
 
     def string_value(self):
-        if (self.valueState == MessageParser.Lazy.ByteArray or self.valueState == MessageParser.Lazy.String):
+        if self.valueState in [MessageParser.Lazy.ByteArray, MessageParser.Lazy.String]:
             return self.data[self.dataStart:self.dataStart + self.dataLength]
         return self.value
 

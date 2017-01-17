@@ -30,10 +30,10 @@ class TestCMF(unittest.TestCase):
         self.assertEqual(buffer[2], 112)
 
         parser = MessageParser(buffer, 0, 3);
-        self.assertEquals(MessageParser.Type.FoundTag, parser.next());
-        self.assertEquals(15, parser.tag);
-        self.assertEquals(6512, parser.value);
-        self.assertEquals(MessageParser.Type.EndOfDocument, parser.next());
+        self.assertEqual(MessageParser.Type.FoundTag, parser.next());
+        self.assertEqual(15, parser.tag);
+        self.assertEqual(6512, parser.value);
+        self.assertEqual(MessageParser.Type.EndOfDocument, parser.next());
 
     def test_basic2(self):
         buffer = bytearray(b"000000000000000000000000000000000")
@@ -47,10 +47,10 @@ class TestCMF(unittest.TestCase):
         self.assertEqual(buffer[4], 112)
 
         parser = MessageParser(buffer, 0, 5);
-        self.assertEquals(MessageParser.Type.FoundTag, parser.next());
-        self.assertEquals(129, parser.tag);
-        self.assertEquals(6512, parser.value);
-        self.assertEquals(MessageParser.Type.EndOfDocument, parser.next());
+        self.assertEqual(MessageParser.Type.FoundTag, parser.next());
+        self.assertEqual(129, parser.tag);
+        self.assertEqual(6512, parser.value);
+        self.assertEqual(MessageParser.Type.EndOfDocument, parser.next());
 
     def test_types(self):
         buffer = bytearray(b"000000000000000000000000000000000")
@@ -62,44 +62,44 @@ class TestCMF(unittest.TestCase):
         self.assertEqual(builder.get_position(), 17)
 
         # string '1'
-        self.assertEquals(buffer[0], 10)
-        self.assertEquals(buffer[1], 4) # serialized string length
-        self.assertEquals(buffer[2], 70)
-        self.assertEquals(buffer[3], 195)
-        self.assertEquals(buffer[4], 182)
-        self.assertEquals(buffer[5], 111)
+        self.assertEqual(buffer[0], 10)
+        self.assertEqual(buffer[1], 4) # serialized string length
+        self.assertEqual(buffer[2], 70)
+        self.assertEqual(buffer[3], 195)
+        self.assertEqual(buffer[4], 182)
+        self.assertEqual(buffer[5], 111)
 
         # blob '200'
-        self.assertEquals(buffer[6], 251)
-        self.assertEquals(buffer[7], 128)
-        self.assertEquals(buffer[8], 72)
-        self.assertEquals(buffer[9], 4) #length of bytearray
-        self.assertEquals(buffer[10], 104) # 'h'
-        self.assertEquals(buffer[11], 105) # 'i'
-        self.assertEquals(buffer[12], 104) # 'h'
-        self.assertEquals(buffer[13], 105) # 'i'
+        self.assertEqual(buffer[6], 251)
+        self.assertEqual(buffer[7], 128)
+        self.assertEqual(buffer[8], 72)
+        self.assertEqual(buffer[9], 4) #length of bytearray
+        self.assertEqual(buffer[10], 104) # 'h'
+        self.assertEqual(buffer[11], 105) # 'i'
+        self.assertEqual(buffer[12], 104) # 'h'
+        self.assertEqual(buffer[13], 105) # 'i'
 
         # bool-true '3'
-        self.assertEquals(buffer[14], 28);
+        self.assertEqual(buffer[14], 28);
 
         # bool-false '40'
-        self.assertEquals(buffer[15], 253);
-        self.assertEquals(buffer[16], 40);
+        self.assertEqual(buffer[15], 253);
+        self.assertEqual(buffer[16], 40);
 
         parser = MessageParser(buffer, 0, builder.get_position());
-        self.assertEquals(MessageParser.Type.FoundTag, parser.next());
-        self.assertEquals(1, parser.tag);
-        self.assertEquals(u"Föo".encode('utf-8'), parser.string_value())
-        self.assertEquals(MessageParser.Type.FoundTag, parser.next());
-        self.assertEquals(200, parser.tag);
-        self.assertEquals(b"hihi", parser.string_value())
-        self.assertEquals(MessageParser.Type.FoundTag, parser.next());
-        self.assertEquals(3, parser.tag);
-        self.assertEquals(True, parser.value)
-        self.assertEquals(MessageParser.Type.FoundTag, parser.next());
-        self.assertEquals(40, parser.tag);
-        self.assertEquals(False, parser.value)
-        self.assertEquals(MessageParser.Type.EndOfDocument, parser.next());
+        self.assertEqual(MessageParser.Type.FoundTag, parser.next());
+        self.assertEqual(1, parser.tag);
+        self.assertEqual(u"Föo".encode('utf-8'), parser.string_value())
+        self.assertEqual(MessageParser.Type.FoundTag, parser.next());
+        self.assertEqual(200, parser.tag);
+        self.assertEqual(b"hihi", parser.string_value())
+        self.assertEqual(MessageParser.Type.FoundTag, parser.next());
+        self.assertEqual(3, parser.tag);
+        self.assertEqual(True, parser.value)
+        self.assertEqual(MessageParser.Type.FoundTag, parser.next());
+        self.assertEqual(40, parser.tag);
+        self.assertEqual(False, parser.value)
+        self.assertEqual(MessageParser.Type.EndOfDocument, parser.next());
 
 if __name__ == '__main__':
     unittest.main()
